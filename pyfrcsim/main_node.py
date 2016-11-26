@@ -1,7 +1,7 @@
 from google.protobuf.message import (
     Message,
 )
-from gazebo.transport import (
+from .gazebo.transport import (
     Node,
     Publisher,
     Subscriber,

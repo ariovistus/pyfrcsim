@@ -1,7 +1,7 @@
 # v 2.5.0 is no good, 3.0.0 seems ok
 PROTOC = ~/Downloads/bin/protoc
-ODIR1=../gazebo/gz_msgs
-ODIR2=../gazebo/msgs
+ODIR1=../pyfrcsim/gazebo/gz_msgs
+ODIR2=../pyfrcsim/gazebo/msgs
 # these seem to have come from frcsim
 OUTPUTS1=bool_pb2.py driver_station_pb2.py float64_pb2.py frc_joystick_pb2.py 
 # these seem to have come from gazebo
@@ -39,14 +39,14 @@ $(ODIR2)/packet_pb2.py: $(ODIR2)
 	$(PROTOC) --python_out=$(ODIR2) packet.proto -I.
 	# stinking protobuf doesn't have an option to change this for python
 	# todo: revisit this with protobuf3
-	sed -i 's/time_pb2/gazebo.msgs.time_pb2/' $@
+	sed -i 's/time_pb2/pyfrcsim.gazebo.msgs.time_pb2/' $@
 
 $(ODIR2)/publish_pb2.py: $(ODIR2)
 	$(PROTOC) --python_out=$(ODIR2) publish.proto
 
 $(ODIR2)/publishers_pb2.py: $(ODIR2)
 	$(PROTOC) --python_out=$(ODIR2) publishers.proto
-	sed -i 's/publish_pb2/gazebo.msgs.publish_pb2/' $@
+	sed -i 's/publish_pb2/pyfrcsim.gazebo.msgs.publish_pb2/' $@
 
 $(ODIR2)/subscribe_pb2.py: $(ODIR2)
 	$(PROTOC) --python_out=$(ODIR2) subscribe.proto

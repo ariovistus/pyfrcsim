@@ -7,15 +7,15 @@ import threading
 from google.protobuf.message import (
     Message
 )
-from gazebo.msgs.packet_pb2 import Packet
-from gazebo.msgs.publish_pb2 import Publish
-from gazebo.msgs.publishers_pb2 import Publishers
-from gazebo.msgs.subscribe_pb2 import Subscribe
-from gazebo.msgs.time_pb2 import Time
-from gazebo.msgs.gz_string_pb2 import GzString
-from gazebo.msgs.gz_string_v_pb2 import GzString_V
-from gazebo.gz_msgs.bool_pb2 import Bool
-from gazebo.gz_msgs.float64_pb2 import Float64
+from .msgs.packet_pb2 import Packet
+from .msgs.publish_pb2 import Publish
+from .msgs.publishers_pb2 import Publishers
+from .msgs.subscribe_pb2 import Subscribe
+from .msgs.time_pb2 import Time
+from .msgs.gz_string_pb2 import GzString
+from .msgs.gz_string_v_pb2 import GzString_V
+from .gz_msgs.bool_pb2 import Bool
+from .gz_msgs.float64_pb2 import Float64
 
 logger = logging.getLogger(__name__)
 

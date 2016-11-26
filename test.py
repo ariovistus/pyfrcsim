@@ -5,7 +5,7 @@ from pyfrcsim.main_node import (
     advertise,
     subscribe,
 )
-from gazebo.msgs.gz_string_pb2 import GzString
+from pyfrcsim.gazebo.msgs.gz_string_pb2 import GzString
 
 import logging
 
