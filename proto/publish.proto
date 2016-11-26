@@ -1,0 +1,17 @@
+package gazebo.msgs;
+
+/// \ingroup gazebo_msgs
+/// \interface Publish
+/// \brief A message for publish data
+/// \verbatim
+
+option java_outer_classname = "GzPublish";
+
+message Publish {
+  required string topic = 1;
+  required string msg_type = 2;
+  required string host = 3;
+  required uint32 port = 4;
+}
+
+/// \endverbatim

@@ -1,0 +1,14 @@
+package gazebo.msgs;
+
+/// \ingroup gazebo_msgs
+/// \interface StringV
+/// \brief A message for virtual string data
+/// \verbatim
+
+option java_outer_classname = "StringV";
+
+message StringV {
+  repeated string data = 1;
+}
+
+/// \endverbatim

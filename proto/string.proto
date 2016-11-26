@@ -1,0 +1,14 @@
+package gazebo.msgs;
+
+/// \ingroup gazebo_msgs
+/// \interface String
+/// \brief A message for string data
+/// \verbatim
+
+option java_outer_classname = "GzString";
+
+message String {
+  required string data = 1;
+}
+
+/// \endverbatim

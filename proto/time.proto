@@ -1,0 +1,15 @@
+package gazebo.msgs;
+
+/// \ingroup gazebo_msgs
+/// \interface Time
+/// \brief A message for time data
+/// \verbatim
+
+option java_outer_classname = "GzTime";
+
+message Time {
+  required int32 sec = 1;
+  required int32 sec = 2;
+}
+
+/// \endverbatim

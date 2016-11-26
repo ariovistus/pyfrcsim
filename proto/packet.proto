@@ -1,0 +1,16 @@
+package gazebo.msgs;
+
+/// \ingroup gazebo_msgs
+/// \interface Packet
+/// \brief A message for packet data
+/// \verbatim
+
+option java_outer_classname = "GzPacket";
+
+message Packet {
+  required Time stamp = 1;
+  required string type = 2;
+  required bytes serialized_data = 3;
+}
+
+/// \endverbatim
