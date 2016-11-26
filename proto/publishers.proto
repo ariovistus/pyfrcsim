@@ -1,14 +1,14 @@
+syntax = "proto2";
 package gazebo.msgs;
 
 /// \ingroup gazebo_msgs
 /// \interface Publishers
-/// \brief A message for publishers data
-/// \verbatim
+/// \brief A list of publishers 
 
-option java_outer_classname = "GzPublishers";
 
-message Publishers {
+import "publish.proto";
+
+message Publishers
+{
   repeated Publish publisher = 1;
 }
-
-/// \endverbatim

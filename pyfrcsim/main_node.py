@@ -27,7 +27,7 @@ def advertise(topic: str, default_message: Message) -> Publisher:
     return _main_node.advertise(topic, default_message)
     
 
-def subscribe(topic: str, default_message: Message, callback: Callback[[Message], None]) -> Subscriber:
+def subscribe(topic: str, default_message: Message, callback) -> Subscriber:
     global _main_node
     _check_main_node()
     return _main_node.subscribe(topic, default_message, callback)
