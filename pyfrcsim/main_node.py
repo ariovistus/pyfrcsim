@@ -21,14 +21,14 @@ def _check_main_node():
         raise Exception("MainNode.openGazeboConnection() should have already been "
         + "called by RobotBase.main()!")
 
-def advertise(topic: str, default_message: Message) -> Publisher:
+def advertise(topic: str, message_class: Message) -> Publisher:
     global _main_node
     _check_main_node()
-    return _main_node.advertise(topic, default_message)
+    return _main_node.advertise(topic, message_class)
     
 
-def subscribe(topic: str, default_message: Message, callback) -> Subscriber:
+def subscribe(topic: str, message_class: Message, callback) -> Subscriber:
     global _main_node
     _check_main_node()
-    return _main_node.subscribe(topic, default_message, callback)
+    return _main_node.subscribe(topic, message_class, callback)
     
