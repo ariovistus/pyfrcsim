@@ -9,11 +9,6 @@ from .gazebo.transport import (
 
 _main_node = None
 
-def open_gazebo_connection():
-    global _main_node
-    _main_node = Node("frc")
-    _main_node.wait_for_connection();
-
 
 def _check_main_node():
     global _main_node
@@ -21,13 +16,26 @@ def _check_main_node():
         raise Exception("MainNode.openGazeboConnection() should have already been "
         + "called by RobotBase.main()!")
 
+
+def open_gazebo_connection(host: str, port: int):
+    global _main_node
+    _main_node = Node("frc")
+    _main_node.wait_for_connection(host, port);
+
+
+def close_gazebo_connection():
+    global _main_node
+    _check_main_node()
+    _main_node.server.close()
+
+
 def advertise(topic: str, message_class: Message) -> Publisher:
     global _main_node
     _check_main_node()
     return _main_node.advertise(topic, message_class)
     
 
-def subscribe(topic: str, message_class: Message, callback) -> Subscriber:
+def subscribe(topic: str, message_class: Message, callback: "(Message) -> None") -> Subscriber:
     global _main_node
     _check_main_node()
     return _main_node.subscribe(topic, message_class, callback)

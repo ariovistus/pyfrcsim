@@ -27,9 +27,13 @@ class Connection:
         self.server = None
 
     def connect(self, host: str, port: int):
+        logger.info("raw connect %s:%s", host, port)
         self.host = host
         self.port = port
         self.socket = socket.create_connection((host, port))
+        local_host, local_port = self.socket.getsockname()
+        remote_host, remote_port = self.socket.getpeername()
+        logger.info("   connect %s:%s -> %s:%s", local_host, local_port, remote_host, remote_port)
         self._make_streams()
 
     def connect_and_wait(self, host: str, port: int):
@@ -78,6 +82,7 @@ class Connection:
         buff = self.rfile.read(Connection.HEADER_SIZE)
         if len(buff) != 8:
             logger.error("Only read %d bytes instead of 8 for header." % (len(buff),))
+            return None
         size = int(buff, 16)
         data = self.rfile.read(size)
         return data
@@ -217,9 +222,7 @@ class Subscriber(Message):
         thread.start()
 
     def handle_connect(self, pub):
-        import pdb
-        pdb.set_trace()
-        logger.info("CONN for %s from %s:%s" % (self.topic, self.host, self.port))
+        logger.info("CONN for %s from %s:%s", self.topic, self.host, self.port)
         conn = Connection()
         try:
             conn.connect(pub.host, pub.port)
@@ -237,6 +240,8 @@ class Subscriber(Message):
                 if data is None:
                     self.connections.remove(conn)
                     return
+                import pdb
+                pdb.set_trace()
                 msg = self.message_class()
                 msg.ParseFromString(data)
                 self.callback(msg)
@@ -259,17 +264,7 @@ class Node:
         self.subscriptions = {}
         self.namespaces = []
 
-    def wait_for_connection(self):
-        default_uri = "localhost:11345"
-        user_defined_uri = os.environ.get("GAZEBO_MASTER_URI", default_uri)
-        xs = user_defined_uri.split(":")
-        if len(xs) != 2:
-            logger.error("invalid GAZEBO_MASTER_URI %s. URI must be of the form HOSTNAME:PORT" % (user_defined_uri,))
-            logger.warning("using default %s" % (default_uri,));
-            xs = default_uri.split(":")
-        host, port = xs
-        port = int(port)
-
+    def wait_for_connection(self, host: str, port: int):
         def _handle(conn: Connection):
             self.handle(conn)
 
@@ -303,9 +298,9 @@ class Node:
             logger.exception("something bad")
         return pub
 
-    def subscribe(self, topic: str, message_class: Message, callback: "(message) -> any"):
+    def subscribe(self, topic: str, message_class: Message, callback: "(Message) -> None"):
         topic = self._fix_topic(topic)
-        logger.info("SUB %s" % (topic,))
+        logger.info("SUB %s", topic)
         if topic in self.subscriptions:
             raise Exception("Multiple subscriptions for %s" % (topic,))
 
@@ -354,7 +349,7 @@ class Node:
         # todo: figure out the actual api for 
         version = GzString()
         version.ParseFromString(init_data.serialized_data)
-        logger.info("Version: %s" % (version.data,))
+        logger.info("Version: %s", version.data)
 
         namespace_data = self.master.read()
         ns = GzString_V()
@@ -375,39 +370,41 @@ class Node:
             logger.error("No publisher data received.")
 
     def process_packet(self, packet):
-        import pdb
-        pdb.set_trace()
         if packet.type == "publisher_add": 
             pub1 = Publish()
             pub1.ParseFromString(packet.serialized_data)
             pub = RemotePublisherRecord(pub1)
             
             if pub.host == self.server.host and pub.port == self.server.port:
-                logger.info("ACK %s" % (pub.topic,))
+                logger.info("ACK %s", pub.topic)
                 return
 
-            logger.info("New Publisher: %s" % (pub.topic,))
-            logger.info("Publisher: %s" % (Publish.parseFrom(packet.serialized_data)))
+            logger.info("New Publisher: %s", pub.topic)
+            logger.info("Publisher: %s", pub1)
             self.publishers[pub.topic] = pub
         elif packet.type in ["publisher_subscribe", "publisher_advertise"]:
-            pub = RemotePublisherRecord(Publish.parseFrom(packet.serialized_data))
+            pub1 = Publish()
+            pub1.ParseFromString(packet.serialized_data)
+            pub = RemotePublisherRecord(pub1)
 
             if pub.host == self.server.host and pub.port == self.server.port:
-                logger.info("Ignoring subscription request on (local) %s" % (pub.topic,))
+                logger.info("Ignoring subscription request on (local) %s", pub.topic)
                 return
             
-            logger.info("PUBSUB found for: %s" % (pub.topic,))
-            logger.info("Publisher: %s" % (Publish.parseFrom(packet.serialized_data)))
+            logger.info("PUBSUB found for: %s", pub.topic)
+            logger.info("Publisher: %s", pub1)
             self.subscriptions[pub.topic].connect(pub)
         elif packet.type == "topic_namespace_add":
-            self.namespaces.append(GzString.String.parseFrom(packet.serialized_data).getData())
-            logger.info("New Namespace: %s" % (pub.topic,))
+            ns = GzString()
+            ns.ParseFromString(packet.serialized_data)
+            self.namespaces.append(ns.data)
+            logger.info("New Namespace: %s", pub.topic)
         elif packet.type == "unsubscribe":
             sub = Subscribe()
             sub.ParseFromString(packet.serialized_data)
-            logger.warning("Ignoring unsubscribe: %s" % (sub,));
+            logger.warning("Ignoring unsubscribe: %s", sub);
         else:
-            logger.warning("Can't handle %s" % (packet.type,))
+            logger.warning("Can't handle %s", packet.type)
 
     def handle(self, conn: Connection):
         import pdb
@@ -422,23 +419,23 @@ class Node:
             sub = Subscribe()
             sub.ParseFromString(msg.serialized_data)
             if sub.topic not in self.publishers:
-                logger.error("Subscription for unknown topic %s" % (sub.topic,))
+                logger.error("Subscription for unknown topic %s", sub.topic)
                 return
 
-            logger.info("New connection for topic %s" % (sub.topic,))
+            logger.info("New connection for topic %s", sub.topic)
 
             pub = self.publishers[sub.topic]
 
             if pub.msg_type != sub.msg_type:
-                logger.error("Message type mismatch requested=%d publishing=%s" % (pub.msg_type, sub.msg_type))
+                logger.error("Message type mismatch requested=%d publishing=%s", pub.msg_type, sub.msg_type)
                 return
 
 
-            logger.info("CONN %s" % (sub.topic,))
+            logger.info("CONN %s", sub.topic)
 
             pub.connect(conn)
         else:
-            logger.warning("Unknown message type: %s" % (msg.type,))
+            logger.warning("Unknown message type: %s", msg.type)
 
 
     def _fix_topic(self, topic: str):

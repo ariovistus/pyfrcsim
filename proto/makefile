@@ -3,7 +3,7 @@ PROTOC = ~/Downloads/bin/protoc
 ODIR1=../pyfrcsim/gazebo/gz_msgs
 ODIR2=../pyfrcsim/gazebo/msgs
 # these seem to have come from frcsim
-OUTPUTS1=bool_pb2.py driver_station_pb2.py float64_pb2.py frc_joystick_pb2.py 
+OUTPUTS1=bool_pb2.py driver_station_pb2.py float64_pb2.py frc_joystick_pb2.py joystick_pb2.py
 # these seem to have come from gazebo
 OUTPUTS2=packet_pb2.py publish_pb2.py publishers_pb2.py subscribe_pb2.py time_pb2.py gz_string_pb2.py gz_string_v_pb2.py time_pb2.py
 
@@ -34,6 +34,9 @@ $(ODIR1)/float64_pb2.py: $(ODIR1)
 
 $(ODIR1)/frc_joystick_pb2.py: $(ODIR1)
 	$(PROTOC) --python_out=$(ODIR1) frc_joystick.proto
+
+$(ODIR1)/joystick_pb2.py: $(ODIR1)
+	$(PROTOC) --python_out=$(ODIR1) joystick.proto
 
 $(ODIR2)/packet_pb2.py: $(ODIR2)
 	$(PROTOC) --python_out=$(ODIR2) packet.proto -I.
