@@ -30,7 +30,11 @@ class Connection:
         logger.info("raw connect %s:%s", host, port)
         self.host = host
         self.port = port
-        self.socket = socket.create_connection((host, port))
+        try:
+            self.socket = socket.create_connection((host, port))
+        except ConnectionRefusedError:
+            logger.exception("connection refused %s:%s", host, port)
+            raise
         local_host, local_port = self.socket.getsockname()
         remote_host, remote_port = self.socket.getpeername()
         logger.info("   connect %s:%s -> %s:%s", local_host, local_port, remote_host, remote_port)
@@ -43,13 +47,15 @@ class Connection:
             try:
                 self.socket = socket.create_connection((host, port))
                 break
-            except socket.timeout as ex:
-                logger.warning("Cannot connect, retrying in five seconds.", exc_info=1)
+            except ConnectionRefusedError as ex:
+                logger.warning("Cannot connect, retrying in five seconds.")
+                time.sleep(5)
         self._make_streams()
 
     def _make_streams(self):
-        self.rfile = self.socket.makefile('b')
-        self.wfile = self.socket.makefile('wb')
+        #self.rfile = self.socket.makefile('rb')
+        #self.wfile = self.socket.makefile('wb')
+        pass
 
     def close(self):
         if self.socket is not None:
@@ -64,27 +70,43 @@ class Connection:
             def __init__(hself):
                 hself.callback = callback
 
-            def handle(self):
+            def handle(hself):
+                import pdb
+                pdb.set_trace()
                 conn = Connection()
                 conn.rfile = hself.rfile
                 conn.wfile = hself.wfile
                 hself.callback(conn)
 
         def _serve():
-            self.server = socketserver.TCPServer(("", 0), Handler) 
-            x = self.host, self.port = self.server.server_address
-            logger.debug("listening on %s:%s" % x)
-            self.server.serve_forever()
+            try:
+                self.server = socketserver.TCPServer(("", 0), Handler) 
+                x = self.host, self.port = self.server.server_address
+                logger.debug("listening on %s:%s" % x)
+                self.server.serve_forever()
+            except:
+                logger.exception("server thread failed")
         thread = threading.Thread(target=_serve)
         thread.start()
         
+    def _raw_read(self, n) -> bytes:
+        buf = bytearray(n)
+        buf_view = memoryview(buf)
+        while n:
+            recvd = self.socket.recv_into(buf_view, n)
+            if recvd == 0:
+                return None
+            buf_view = buf_view[recvd:]
+            n -= recvd
+        return bytes(buf)
+
     def raw_read(self) -> bytes:
-        buff = self.rfile.read(Connection.HEADER_SIZE)
+        buff = self._raw_read(Connection.HEADER_SIZE)
         if len(buff) != 8:
             logger.error("Only read %d bytes instead of 8 for header." % (len(buff),))
             return None
         size = int(buff, 16)
-        data = self.rfile.read(size)
+        data = self._raw_read(size)
         return data
 
     def read(self) -> Packet:
@@ -95,9 +117,19 @@ class Connection:
         p.ParseFromString(a)
         return p
         
+    def _raw_write(self, buf):
+        n = len(buf)
+        sumsent = 0
+        while sumsent < n:
+            sent = self.socket.send(buf[sumsent:])
+            if sent == 0:
+                raise Exception("socket connection broken")
+            sumsent += sent
+
     def write(self, message: Message):
         _bytes = message.SerializeToString()
-        self.wfile.write(_bytes)
+        logger.info("sending: %r", _bytes)
+        self._raw_write(_bytes)
 
     def write_packet(self, name: str, message: Message):
         ms = current_time_millis()
@@ -209,8 +241,8 @@ class Subscriber(Message):
     def __init__(self, topic, msg_type, callback, message_class, host, port):
         self.topic = topic
         self.msg_type = msg_type
-        self.host = host
-        self.port = port
+        self.local_host = host
+        self.local_port = port
         self.callback = callback
         self.message_class = message_class
         self.connections = []
@@ -222,7 +254,9 @@ class Subscriber(Message):
         thread.start()
 
     def handle_connect(self, pub):
-        logger.info("CONN for %s from %s:%s", self.topic, self.host, self.port)
+        logger.info(
+            "CONN for %s from %s:%s", 
+            self.topic, pub.host, pub.port)
         conn = Connection()
         try:
             conn.connect(pub.host, pub.port)
@@ -230,9 +264,10 @@ class Subscriber(Message):
             sub = Subscribe()
             sub.topic = self.topic
             sub.msg_type = self.msg_type
-            sub.host = self.host
-            sub.port = self.port
+            sub.host = pub.host
+            sub.port = pub.port
             sub.latching = False
+            logger.info("hey! talk to me! %s", sub)
             conn.write_packet("sub", sub)
 
             while True:
@@ -271,9 +306,7 @@ class Node:
         self.server.serve(_handle)
         self.master.connect_and_wait(host, port)
         self.initialize_connection()
-        def _run():
-            self.run()
-        thread = threading.Thread(target=_run)
+        thread = threading.Thread(target=self.run)
         thread.start()
 
     def advertise(self, topic: str, message_class: Message) -> Publisher:
@@ -364,8 +397,8 @@ class Node:
             for pub in pubs.publisher:
                 record = RemotePublisherRecord(pub)
                 self.publishers[record.topic] = record
-            for pub in self.publishers:
-                logger.info(self.publishers[pub])
+            for i, pub in enumerate(self.publishers):
+                logger.info("init - publisher[%d]: %s", i, self.publishers[pub])
         else:
             logger.error("No publisher data received.")
 
@@ -398,7 +431,7 @@ class Node:
             ns = GzString()
             ns.ParseFromString(packet.serialized_data)
             self.namespaces.append(ns.data)
-            logger.info("New Namespace: %s", pub.topic)
+            logger.info("New Namespace: %s", ns.data)
         elif packet.type == "unsubscribe":
             sub = Subscribe()
             sub.ParseFromString(packet.serialized_data)
